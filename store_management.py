@@ -43,7 +43,7 @@ WEEKDAYS = [
     ("Sunday", calendar.SUNDAY),
 ]
 
-GITHUB_REPO = "TheOther-Guy/FIG-D-H"
+GITHUB_REPO = "figeg/FIG-D-H"
 GITHUB_BRANCH = "main"
 GITHUB_FILE_PATH = "custom_stores.json"
 
