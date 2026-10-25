@@ -333,7 +333,7 @@ FILE_DATE_FORMATS = {
     "Dar al Shifa": '%m/%d/%Y %I:%M:%S %p',
     "Edu Boys": '%m/%d/%Y %I:%M:%S %p',
     "Edu Girls 2": '%m/%d/%Y %I:%M:%S %p',
-    "Edu Girls": '%m/%d/%Y %I:%M:%S %p',
+    "Edu Girls": '%d/%m/%Y %I:%M:%S %p',
     "Farwaniya Hospital": '%m/%d/%Y %I:%M:%S %p',
     "Homz Mall": '%m/%d/%Y %I:%M:%S %p',
     "IC Salmiya": '%m/%d/%Y %I:%M:%S %p',
