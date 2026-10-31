@@ -112,7 +112,7 @@ class FingerprintProcessor:
         # ------------------------------------------------------------------
         # NEW: Extract Source_Name from NUMERIC filename, fallback to legacy
         #      - New convention: <companyDigit><locationCode>.xlsx  (e.g. 117.xlsx)
-        #      - First digit = company (1=D&H, 2=D&Co, 3=Second Cup, 4=Alhadaba)
+        #      - First digit = company (1=D&H, 2=D&Co, 3=Second Cup, 4=Alhadaba, 5=D&CO Jordan)
         #      - Remaining digits = location code within that company
         #      - We use selected_company_name + LOCATION_MAP to map locationCode → Source_Name
         #      - If filename is not numeric OR code not found → fallback to old logic

@@ -23,7 +23,7 @@ After logging in, the sidebar on the left has these pages:
 
 1. **Log in** with the username and password provided by your administrator.
 2. In the sidebar, click **⏰ Fingerprint Reports**.
-3. **Select the company** from the dropdown: *Al-hadabah times*, *D&H*, *D&co*, or *Second Cup*.
+3. **Select the company** from the dropdown: *Al-hadabah times*, *D&H*, *D&co*, *D&CO Jordan*, or *Second Cup*.
    ⚠️ Make sure the company matches the files you are about to upload — each company has its own date formats and rules.
 4. **Upload the fingerprint files** (.csv, .xls, or .xlsx) exported from the punch machines. You can upload several files at once.
 5. *(Optional)* **Upload the Vacation/Sick/Emergency adjustments file** if you have one for this period.
@@ -79,7 +79,7 @@ When a new store opens, you can register it yourself — no developer needed. In
 
 ### 🔢 The store number
 
-After saving, the app shows the store's **number** — for example **141**. This is important: **rename that store's fingerprint files to this number** (`141.xlsx`, `141.csv`…) before uploading them, exactly like the existing stores. The first digit is the company (1 = D&H, 2 = D&co, 3 = Second Cup, 4 = Al-hadabah times) and the rest is the store's own code — the app picks the next free one automatically.
+After saving, the app shows the store's **number** — for example **141**. This is important: **rename that store's fingerprint files to this number** (`141.xlsx`, `141.csv`…) before uploading them, exactly like the existing stores. The first digit is the company (1 = D&H, 2 = D&co, 3 = Second Cup, 4 = Al-hadabah times, 5 = D&CO Jordan) and the rest is the store's own code — the app picks the next free one automatically. Store names must be unique across all companies (the page will tell you if a name is already taken — e.g. add "Jordan" to the name).
 
 ⏳ The new store becomes usable in the Fingerprint Reports page after the app refreshes itself (about 1–2 minutes on the live app).
 

@@ -84,6 +84,20 @@ COMPANY_CONFIGS = {
             # "Fashion SHW": {"weekend_days": [calendar.FRIDAY], "is_rotational_off": True, "rotational_days_off_per_week": 1},
         }
     },
+    "D&CO Jordan": { # Same rules as D&co; locations are added via the Store Management page
+        "default_rules": {
+            "standard_shift_hours": 8,
+            "short_t_threshold_hours": 7.5,
+            "more_t_start_hours": 9,
+            "more_t_enabled": True,
+            "weekend_days": [calendar.FRIDAY],
+            "is_rotational_off": False,
+            "fixed_break_deduction_minutes": 0,
+            "fixed_break_threshold_hours": 0
+        },
+        "employee_overrides": {},
+        "location_rules": {}
+    },
     "Second Cup": { # Added as a top-level company based on provided data
         "default_rules": {
             "standard_shift_hours": 9,
@@ -333,7 +347,7 @@ FILE_DATE_FORMATS = {
     "Dar al Shifa": '%m/%d/%Y %I:%M:%S %p',
     "Edu Boys": '%m/%d/%Y %I:%M:%S %p',
     "Edu Girls 2": '%m/%d/%Y %I:%M:%S %p',
-    "Edu Girls": '%d/%m/%Y %I:%M:%S %p',
+    "Edu Girls": '%m/%d/%Y %I:%M:%S %p',
     "Farwaniya Hospital": '%m/%d/%Y %I:%M:%S %p',
     "Homz Mall": '%m/%d/%Y %I:%M:%S %p',
     "IC Salmiya": '%m/%d/%Y %I:%M:%S %p',
@@ -508,6 +522,8 @@ LOCATION_MAP = {
         "DCO HO": "18",
         "Hunkemoller Avenue": "19",
     },
+    # D&CO Jordan = 5 (locations are added via the Store Management page)
+    "D&CO Jordan": {},
 }
 
 # =====================================================================
@@ -770,8 +786,21 @@ def get_expected_working_days_in_period(start_date, end_date, rules: dict) -> fl
 # not change any calculation logic.
 import json as _json
 import os as _os
+import copy as _copy
 
-CUSTOM_STORES_FILE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "custom_stores.json")
+# Snapshot of the stores defined in this file, taken before the overlay is
+# merged, so the Store Management page can tell built-in stores from added ones.
+BUILTIN_LOCATION_MAP = _copy.deepcopy(LOCATION_MAP)
+
+# Date formats and Google Sheet links are keyed by store name across ALL
+# companies, so a new store must not reuse any name already configured here.
+BUILTIN_STORE_NAMES = (
+    {name for stores in LOCATION_MAP.values() for name in stores}
+    | set(FILE_DATE_FORMATS)
+    | set(STORE_OPS_LINKS)
+)
+
+CUSTOM_STORES_FILE =_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "custom_stores.json")
 
 
 def load_custom_stores() -> dict:

@@ -1,14 +1,16 @@
 # D&H Group Web App dependencies
-# Install with: pip install -r requirements.txt
+# Streamlit Cloud installs exactly these on every deploy.
+# All versions pinned to the locally tested environment (2026-10-06).
 
-streamlit==1.33.0        # Web app framework (UI, uploads, downloads)
-pandas==2.2.2            # All data processing
-requests==2.31.0         # Fetches Google Sheets schedules + image downloads
+streamlit==1.45.1        # Web app framework (UI, uploads, downloads)
+pandas==2.2.3            # All data processing
+numpy==2.2.6             # Used directly in vacation_adjustment.py and pending_offs.py (also required by pandas)
+requests==2.32.3         # Fetches Google Sheets schedules + GitHub auto-commit (Store Management page)
 
 # Excel file support (used by pandas)
-openpyxl                 # Read .xlsx files
-xlrd                     # Read legacy .xls files
-xlsxwriter               # Write the final Excel report
+openpyxl==3.1.5          # Read .xlsx files
+xlrd==2.0.2              # Read legacy .xls files
+xlsxwriter==3.2.9        # Write the final Excel report
 
-# Timezone data (pandas dependency, pinned for consistency)
-pytz
+# Timezone data (pandas dependency, pinned for reproducible deploys)
+pytz==2025.2

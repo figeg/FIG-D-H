@@ -15,7 +15,7 @@ import os
 import requests
 import streamlit as st
 
-from config import COMPANY_CONFIGS, LOCATION_MAP, CUSTOM_STORES_FILE, load_custom_stores
+from config import BUILTIN_LOCATION_MAP, BUILTIN_STORE_NAMES, CUSTOM_STORES_FILE, load_custom_stores
 
 # First digit of the fingerprint filename identifies the company.
 COMPANY_DIGITS = {
@@ -23,6 +23,7 @@ COMPANY_DIGITS = {
     "D&co": "2",
     "Second Cup": "3",
     "Al-hadabah times": "4",
+    "D&CO Jordan": "5",
 }
 
 # Human labels -> strptime formats offered in the form.
@@ -43,7 +44,7 @@ WEEKDAYS = [
     ("Sunday", calendar.SUNDAY),
 ]
 
-GITHUB_REPO = "figeg/FIG-D-H"
+GITHUB_REPO = "TheOther-Guy/FIG-D-H"
 GITHUB_BRANCH = "main"
 GITHUB_FILE_PATH = "custom_stores.json"
 
@@ -114,7 +115,7 @@ def _save_custom_stores(data: dict) -> tuple[bool, str]:
 
 def _used_codes(company: str, custom: dict) -> set:
     """All 2-digit location codes in use for a company (config.py + custom)."""
-    codes = set(str(c) for c in LOCATION_MAP.get(company, {}).values())
+    codes = set(str(c) for c in BUILTIN_LOCATION_MAP.get(company, {}).values())
     for store in custom.get(company, {}).values():
         codes.add(str(store.get("code", "")))
     return codes
@@ -137,6 +138,29 @@ def _file_number(company: str, code: str) -> str:
 # Page
 # ----------------------------------------------------------------------
 
+def _name_taken(name: str, custom: dict) -> str | None:
+    """Returns the owning company if the name is already used anywhere, else None.
+
+    Case-insensitive, across all companies, because date formats and Google
+    Sheet links are looked up by store name alone.
+    """
+    target = name.strip().lower()
+    for company, stores in BUILTIN_LOCATION_MAP.items():
+        if any(n.lower() == target for n in stores):
+            return company
+    for company, stores in custom.items():
+        if any(n.lower() == target for n in stores):
+            return company
+    if any(n.lower() == target for n in BUILTIN_STORE_NAMES):
+        return "config.py"
+    return None
+
+
+def _flash(level: str, text: str):
+    """Queues a message to show after the page reloads with fresh data."""
+    st.session_state.setdefault("sm_flash", []).append((level, text))
+
+
 def store_management_page():
     st.title("🏪 Store Management")
     st.info(
@@ -145,6 +169,9 @@ def store_management_page():
         "files to that number (e.g. `141.xlsx`) before uploading them."
     )
 
+    for level, text in st.session_state.pop("sm_flash", []):
+        getattr(st, level)(text)
+
     custom = load_custom_stores()
 
     company = st.selectbox("1️⃣ Select the company:", list(COMPANY_DIGITS.keys()), key="sm_company")
@@ -152,14 +179,11 @@ def store_management_page():
     # ------------------------------------------------------------------
     # Existing stores overview
     # ------------------------------------------------------------------
+    custom_stores = custom.get(company, {})
     with st.expander("📋 Existing stores for this company", expanded=False):
-        builtin = LOCATION_MAP.get(company, {})
-        custom_stores = custom.get(company, {})
         rows = []
-        for name, code in sorted(builtin.items(), key=lambda x: x[1]):
-            if name in custom_stores:
-                continue  # shown in the custom list below
-            rows.append({"Store": name, "File number": _file_number(company, str(code)), "Source": "config.py"})
+        for name, code in sorted(BUILTIN_LOCATION_MAP.get(company, {}).items(), key=lambda x: x[1]):
+            rows.append({"Store": name, "File number": _file_number(company, str(code)), "Source": "built-in"})
         for name, s in sorted(custom_stores.items(), key=lambda x: x[1].get("code", "")):
             rows.append({"Store": name, "File number": _file_number(company, str(s.get("code"))), "Source": "added here"})
         if rows:
@@ -172,37 +196,49 @@ def store_management_page():
     # ------------------------------------------------------------------
     st.subheader("➕ Add a new store or ✏️ update one added here")
 
-    editable_names = sorted(custom.get(company, {}).keys())
+    editable_names = sorted(custom_stores.keys())
     mode = st.radio(
         "What do you want to do?",
-        ["Add a new store"] + ([f"Update an existing store"] if editable_names else []),
+        ["Add a new store", "Update an existing store"],
         horizontal=True,
         key="sm_mode",
     )
 
     editing_name = None
     existing = {}
-    if mode != "Add a new store" and editable_names:
-        editing_name = st.selectbox("Store to update:", editable_names, key="sm_edit_store")
-        existing = custom.get(company, {}).get(editing_name, {})
+    if mode == "Update an existing store":
+        if not editable_names:
+            st.info(f"No stores have been added for {company} yet — choose 'Add a new store'.")
+            return
+        editing_name = st.selectbox("Store to update:", editable_names, key=f"sm_edit_store_{company}")
+        existing = custom_stores.get(editing_name, {})
 
     hours_options = [8, 9] + ([12, 24] if company == "Second Cup" else [])
+    # Widget keys include the store being edited so its saved values load fresh.
+    form_id = f"{company}_{editing_name or '__new__'}_{st.session_state.get('sm_form_gen', 0)}"
 
-    with st.form("store_form"):
+    with st.form(f"store_form_{form_id}"):
         name = st.text_input(
             "2️⃣ Store name (exactly as the team knows it):",
             value=editing_name or "",
             disabled=editing_name is not None,
+            key=f"sm_name_{form_id}",
         )
 
         fmt_labels = list(DATE_FORMAT_OPTIONS.keys())
         fmt_default = 0
         if existing.get("date_format") in DATE_FORMAT_OPTIONS.values():
             fmt_default = list(DATE_FORMAT_OPTIONS.values()).index(existing["date_format"])
-        fmt_label = st.selectbox("3️⃣ Date format of the fingerprint machine's export:", fmt_labels, index=fmt_default)
+        fmt_label = st.selectbox(
+            "3️⃣ Date format of the fingerprint machine's export:",
+            fmt_labels, index=fmt_default, key=f"sm_fmt_{form_id}",
+        )
 
         hours_default = hours_options.index(existing["working_hours"]) if existing.get("working_hours") in hours_options else 0
-        working_hours = st.radio("4️⃣ Working hours:", hours_options, index=hours_default, horizontal=True)
+        working_hours = st.radio(
+            "4️⃣ Working hours:", hours_options, index=hours_default,
+            horizontal=True, key=f"sm_hours_{form_id}",
+        )
         if company == "Second Cup":
             st.caption("12 and 24 are the store's opening hours (24 enables the 24-hour shift logic).")
 
@@ -212,13 +248,14 @@ def store_management_page():
         weekend_days = []
         for col, (label, day_idx) in zip(cols, WEEKDAYS):
             with col:
-                if st.checkbox(label[:3], value=day_idx in existing_weekends, key=f"sm_wd_{label}"):
+                if st.checkbox(label[:3], value=day_idx in existing_weekends, key=f"sm_wd_{form_id}_{label}"):
                     weekend_days.append(day_idx)
 
         store_ops_link = st.text_input(
             "6️⃣ Google Sheet schedule link (optional — needed for the Store Ops checks):",
             value=existing.get("store_ops_link", ""),
             placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv",
+            key=f"sm_link_{form_id}",
         )
 
         submitted = st.form_submit_button("💾 Save store", type="primary")
@@ -228,10 +265,14 @@ def store_management_page():
         if not name:
             st.error("Please enter the store name.")
             return
-        all_known = set(LOCATION_MAP.get(company, {})) | set(custom.get(company, {}))
-        if editing_name is None and name in all_known:
-            st.error(f"A store named '{name}' already exists for {company}. Use Update instead.")
-            return
+        if editing_name is None:
+            owner = _name_taken(name, custom)
+            if owner:
+                st.error(
+                    f"A store named '{name}' already exists ({owner}). Store names must be unique "
+                    f"across all companies — add a distinguishing word, e.g. '{name} Jordan'."
+                )
+                return
 
         if editing_name is not None:
             code = existing.get("code")
@@ -250,30 +291,41 @@ def store_management_page():
             "store_ops_link": store_ops_link.strip(),
         }
         pushed, message = _save_custom_stores(custom)
-        (st.success if pushed else st.warning)(message)
+        _flash("success" if pushed else "warning", message)
 
         number = _file_number(company, code)
-        st.success(
-            f"✅ Store **{name}** saved for **{company}**.\n\n"
+        action = "updated" if editing_name else "added"
+        _flash(
+            "success",
+            f"✅ Store **{name}** {action} for **{company}**.\n\n"
             f"### 🔢 Its store number is **{number}**\n"
-            f"Rename this store's fingerprint files to **{number}.xlsx** (or .csv/.xls) before uploading."
+            f"Rename this store's fingerprint files to **{number}.xlsx** (or .csv/.xls) before uploading.",
         )
         if not weekend_days:
-            st.info("No weekend days selected → this store is treated as ROTATIONAL (1 day off per week).")
-        st.caption("The new store becomes usable in the report generator after the next app restart/redeploy.")
+            _flash("info", "No weekend days selected → this store is treated as ROTATIONAL (1 day off per week).")
+        _flash("caption", "The change takes effect in the report generator after the next app restart/redeploy.")
+        if editing_name is None:
+            # New widget keys -> the next store starts from a blank form.
+            st.session_state["sm_form_gen"] = st.session_state.get("sm_form_gen", 0) + 1
+        st.rerun()
 
     # ------------------------------------------------------------------
     # Delete
     # ------------------------------------------------------------------
     if editable_names:
         st.subheader("🗑️ Delete a store added here")
-        st.caption("Stores defined in config.py can only be changed by the administrator.")
-        del_name = st.selectbox("Store to delete:", editable_names, key="sm_del_store")
-        confirm = st.checkbox(f"I confirm deleting '{del_name}' from {company}", key="sm_del_confirm")
-        if st.button("Delete store", disabled=not confirm):
+        st.caption("Built-in stores can only be changed by the administrator in config.py.")
+        del_name = st.selectbox("Store to delete:", editable_names, key=f"sm_del_store_{company}")
+        confirm = st.checkbox(
+            f"I confirm deleting '{del_name}' from {company}",
+            key=f"sm_del_confirm_{company}_{del_name}",
+        )
+        if st.button("Delete store", disabled=not confirm, key=f"sm_del_btn_{company}"):
             custom.get(company, {}).pop(del_name, None)
             if not custom.get(company):
                 custom.pop(company, None)
             pushed, message = _save_custom_stores(custom)
-            (st.success if pushed else st.warning)(message)
-            st.success(f"🗑️ Store '{del_name}' deleted.")
+            _flash("success" if pushed else "warning", message)
+            _flash("success", f"🗑️ Store '{del_name}' deleted from {company}.")
+            st.session_state.pop(f"sm_del_confirm_{company}_{del_name}", None)
+            st.rerun()
